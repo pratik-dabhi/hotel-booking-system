@@ -2,8 +2,9 @@
 
 namespace App\Services;
 
+use App\Http\Repositories\Booking\BookingRepository;
+use App\Http\Repositories\RoomType\RoomTypeRepository;
 use App\Models\Booking;
-use App\Models\RoomType;
 use Exception;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
@@ -12,7 +13,11 @@ use Illuminate\Support\Str;
 
 class BookingService
 {
-    public function __construct(protected AvailabilityService $availabilityService) {}
+    public function __construct(
+        protected AvailabilityService $availabilityService,
+        protected BookingRepository $bookingRepository,
+        protected RoomTypeRepository $roomTypeRepository
+    ) {}
 
     /**
      * Create a new booking and auto-assign available rooms.
@@ -30,7 +35,11 @@ class BookingService
             $guests = $data['guests'];
             $roomsCount = $data['rooms_count'];
 
-            $roomType = RoomType::findOrFail($roomTypeId);
+            $roomType = $this->roomTypeRepository->getById($roomTypeId);
+            if (! $roomType) {
+                throw new Exception('Room Type not found.');
+            }
+
             $availableRooms = $this->availabilityService->getAvailableRooms(
                 $roomTypeId,
                 $checkIn,
@@ -50,7 +59,7 @@ class BookingService
             $pricePerNight = $roomType->price;
             $totalAmount = $roomsCount * $pricePerNight * $nights;
 
-            $booking = Booking::create([
+            $booking = $this->bookingRepository->create([
                 'booking_reference' => strtoupper(Str::random(10)),
                 'user_id' => $userId,
                 'room_type_id' => $roomTypeId,
@@ -76,10 +85,7 @@ class BookingService
      */
     public function getUserBookings(int $userId)
     {
-        return Booking::where('user_id', $userId)
-            ->with(['roomType.hotel', 'rooms'])
-            ->orderBy('created_at', 'desc')
-            ->get();
+        return $this->bookingRepository->getUserBookings($userId);
     }
 
     /**
@@ -91,16 +97,6 @@ class BookingService
      */
     public function cancelBooking(int $userId, int $bookingId)
     {
-        return DB::transaction(function () use ($userId, $bookingId) {
-            $booking = Booking::where('user_id', $userId)->lockForUpdate()->findOrFail($bookingId);
-
-            if ($booking->status === 'cancelled') {
-                throw new Exception('Booking is already cancelled.');
-            }
-
-            $booking->update(['status' => 'cancelled']);
-
-            return $booking;
-        });
+        return $this->bookingRepository->cancelBooking($userId, $bookingId);
     }
 }

@@ -27,6 +27,15 @@ class AvailabilityController extends Controller
 
         $hotels = $this->availabilityService->getAvailableHotels($filters);
 
+        if ($hotels->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'code' => Response::HTTP_NOT_FOUND,
+                'message' => 'No available hotels found.',
+                'data' => $hotels,
+            ], Response::HTTP_NOT_FOUND);
+        }
+
         return response()->json([
             'success' => true,
             'code' => Response::HTTP_OK,

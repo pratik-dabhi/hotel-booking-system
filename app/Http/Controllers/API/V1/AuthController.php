@@ -5,18 +5,20 @@ namespace App\Http\Controllers\API\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\UserLoginRequest;
 use App\Http\Requests\Auth\UserRegisterRequest;
-use App\Models\User;
+use App\Http\Repositories\User\UserRepository;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 
 class AuthController extends Controller
 {
+    public function __construct(protected UserRepository $userRepository) {}
+
     public function register(UserRegisterRequest $request): JsonResponse
     {
         $data = $request->validated();
 
-        $user = User::create([
+        $user = $this->userRepository->create([
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => bcrypt($data['password']),

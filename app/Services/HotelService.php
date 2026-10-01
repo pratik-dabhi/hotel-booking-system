@@ -4,20 +4,19 @@ namespace App\Services;
 
 use App\Http\Repositories\Hotel\HotelRepository;
 use App\Http\Repositories\Room\RoomRepository;
-use App\Models\Hotel;
-use App\Models\Room;
+use App\Http\Repositories\RoomType\RoomTypeRepository;
 use Illuminate\Support\Facades\DB;
 
 class HotelService
 {
     public function __construct(
-        protected HotelRepository $hotelRepository, protected RoomRepository $roomRepository
+        protected HotelRepository $hotelRepository,
+        protected RoomRepository $roomRepository,
+        protected RoomTypeRepository $roomTypeRepository
     ) {}
 
     /**
      * Create a new hotel with its room types and auto-generated rooms.
-     *
-     * @return Hotel
      */
     public function createHotel(array $data)
     {
@@ -32,7 +31,8 @@ class HotelService
             $hotel = $this->hotelRepository->create($data);
 
             foreach ($roomTypesData as $typeIndex => $roomTypeData) {
-                $roomType = $hotel->roomTypes()->create([
+                $roomType = $this->roomTypeRepository->create([
+                    'hotel_id' => $hotel->id,
                     'name' => $roomTypeData['name'],
                     'description' => $roomTypeData['description'],
                     'price' => $roomTypeData['price'],
